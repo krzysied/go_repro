@@ -1,0 +1,51 @@
+Http2 call latency issue repro
+
+Important:
+ - Client, server and etcd are only names for components.
+   They are only representing k8s components, there is no k8s code.
+ - Due to http2 specification, certificates are required for clients and servers.
+
+Goal:
+Show the impact of memory usage on http2 call latency.
+
+
+Usage:
+- make good
+  Runs "good" scenario, where each call to server lasts 50ms. The max latency
+  of calls to etcd is ~100ms
+- make bad
+  Runs "bad" scenario, where each call to server lasts 5m. The max latency
+  of call to etcd is ~400ms
+- make clean
+  Removes binary file and logs.
+
+
+Scripts:
+- script_bad.sh
+  script_bad.sh runs 10 minutes test.
+  Test is reproducing clients-server-etcd scenario, where:
+  - clients open 5m long calls
+  - server handles calls form clients (5 minutes sleep) while also sending calls to etcd
+  - etcd handles calls by calling sleep 50ms and the sending 80000B as response.
+- script_good.sh
+  script_good.sh runs 10 minutes test.
+  Test is reproducing clients-server-etcd scenario, where:
+  - clients open 5m long calls
+  - server handles calls form clients (50ms sleep) while also sending calls to etcd
+  - etcd handles calls by calling sleep 50ms and the sending 80000B as response.
+
+
+Golang files:
+- main.go
+  Main file that morphs into specific component.
+- client.go
+  http2 client code.
+- server.go
+  http2 server code.
+
+
+Results:
+There are log files created for each component.
+Each call from server to etcd that took > 100ms will be logged in server.log
+To see these calls use:
+  cat server.log | grep "duration" | less
